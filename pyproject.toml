@@ -1,7 +1,21 @@
 [project]
-name = "morgen-diary"
+name = "morgen-mcp"
 version = "0.1.0"
-description = "Add your description here"
+description = "MCP server that exposes Morgen calendar data as tools"
 readme = "README.md"
 requires-python = ">=3.14"
-dependencies = []
+dependencies = [
+    "mcp[cli]",
+    "httpx",
+    "python-dotenv",
+]
+
+[project.scripts]
+morgen-mcp = "morgen_diary.server:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/morgen_diary"]
