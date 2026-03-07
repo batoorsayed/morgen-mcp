@@ -6,7 +6,7 @@ An MCP server that connects your [Morgen](https://morgen.so) calendar to any MCP
 
 ## The idea
 
-Calendar apps give you the technical skeleton of your day — what you did and when. Physical journals capture the feeling of it. This tool lives in between.
+Calendar apps give you the technical skeleton of your day; what you did and when. Physical journals capture the feeling of it. This tool lives in between.
 
 `morgen-mcp` exposes your Morgen schedule as tools that your AI client can call. At the end of the day, ask it to write a diary entry: it fetches your actual events, you add how it felt, and it writes something that reads like a real diary and  not a meeting log.
 
