@@ -80,7 +80,7 @@ def _parse_event_start(ev: dict) -> datetime:
     if tz_str and not ev.get("showWithoutTime", False):
         try:
             return s.replace(tzinfo=ZoneInfo(tz_str))
-        except (ZoneInfoNotFoundError, KeyError):
+        except ZoneInfoNotFoundError, KeyError:  # ruff: noqa
             pass
     return s.replace(tzinfo=timezone.utc)
 
@@ -133,7 +133,10 @@ def list_accounts() -> str:
         "2. Check if today's daily note exists — if not, create it\n"
         "3. Read today's note and any recently flagged notes for context\n"
         "4. Ask me 2-3 short questions to capture what the calendar doesn't show\n"
-        "5. Write a personal diary entry — human, not a bullet list\n"
+        "5. Write a personal diary entry — human, not a bullet list. "
+        "Base it on the calendar events and the user's own words. "
+        "Only include feelings or thoughts the user explicitly shared. "
+        "Do not invent emotions, personality, or inner monologue.\n"
         "6. Append it under a '### End of Day' heading\n"
         "---"
     )
@@ -243,7 +246,9 @@ def get_events(date: str = "") -> str:
                 raw_date = datetime.fromisoformat(ev.get("start", "")).date()
                 if dur and dur.days > 1:
                     end_date = raw_date + dur - timedelta(days=1)
-                    span = f"{raw_date.strftime('%b %-d')}–{end_date.strftime('%b %-d')}"
+                    span = (
+                        f"{raw_date.strftime('%b %-d')}–{end_date.strftime('%b %-d')}"
+                    )
                     lines.append(f"  all-day ({span})  {title}")
                 else:
                     lines.append(f"  all-day  {title}")
