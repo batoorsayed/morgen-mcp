@@ -30,7 +30,7 @@ The AI client calls these tools to get your schedule. Writing the diary entry an
 
 ## Requirements
 
-- Python 3.11+
+- Python 3.14+
 - [uv](https://docs.astral.sh/uv/)
 - A [Morgen](https://morgen.so) account - get your API key at [platform.morgen.so](https://platform.morgen.so)
 - Any MCP-compatible client (Claude Desktop, Cursor, Windsurf, etc.)
@@ -40,7 +40,7 @@ The AI client calls these tools to get your schedule. Writing the diary entry an
 ## Setup
 
 ```bash
-git clone https://github.com/YOUR_USERNAME/morgen-mcp
+git clone https://github.com/batoorsayed/morgen-mcp
 cd morgen-mcp
 uv sync
 ```
@@ -80,22 +80,22 @@ Copy the env line into your `.env`. Include only the accounts whose events you w
 
 ### 3. Register with your MCP client
 
-**Claude Code:**
+**Claude Code** — run this from inside the cloned directory:
 
 ```bash
-claude mcp add --scope user morgen-mcp -- uv --directory /absolute/path/to/morgen-mcp run morgen-mcp
+claude mcp add --scope user morgen-mcp -- uv --directory $(pwd) run morgen-mcp
 ```
 
 Run once. Available across all projects. Credentials are picked up from `.env` automatically.
 
-**Other clients** (Claude Desktop, Cursor, Windsurf, etc.) — add to your client's MCP config file:
+**Other clients** (Claude Desktop, Cursor, Windsurf, etc.) — add to your client's MCP config file, replacing `/path/to/morgen-mcp` with the actual path to your clone. Most clients expand `$VAR` references from your shell environment — if yours doesn't, paste the actual values directly.
 
 ```json
 {
   "mcpServers": {
     "morgen-mcp": {
       "command": "uv",
-      "args": ["--directory", "/absolute/path/to/morgen-mcp", "run", "morgen-mcp"],
+      "args": ["--directory", "/path/to/morgen-mcp", "run", "morgen-mcp"],
       "env": {
         "MORGEN_API_KEY": "$MORGEN_API_KEY",
         "MORGEN_ACCOUNT_ID": "$MORGEN_ACCOUNT_ID"
