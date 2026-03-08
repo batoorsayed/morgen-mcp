@@ -1,3 +1,4 @@
+import os
 import sys
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -7,8 +8,6 @@ from dotenv import load_dotenv
 from mcp.server.fastmcp import FastMCP
 
 load_dotenv(Path(__file__).resolve().parents[2] / ".env")
-
-import os
 
 MORGEN_BASE_URL = "https://api.morgen.so/v3"
 
@@ -42,10 +41,9 @@ def _account_ids() -> list[str]:
     return [aid.strip() for aid in raw.split(",") if aid.strip()]
 
 
-def _fetch_all_calendars() -> list[dict]:
+def _fetch_all_calendars(client: httpx.Client) -> list[dict]:
     """Return all calendars across all accounts."""
-    with httpx.Client() as client:
-        resp = client.get(f"{MORGEN_BASE_URL}/calendars/list", headers=_auth_headers())
+    resp = client.get(f"{MORGEN_BASE_URL}/calendars/list", headers=_auth_headers())
     resp.raise_for_status()
     return resp.json().get("data", {}).get("calendars", [])
 
@@ -54,7 +52,9 @@ def _fetch_all_calendars() -> list[dict]:
 def list_accounts() -> str:
     """List all connected Morgen accounts and their IDs."""
     with httpx.Client() as client:
-        resp = client.get(f"{MORGEN_BASE_URL}/integrations/accounts/list", headers=_auth_headers())
+        resp = client.get(
+            f"{MORGEN_BASE_URL}/integrations/accounts/list", headers=_auth_headers()
+        )
     if resp.status_code != 200:
         return f"Error {resp.status_code}: {resp.text}"
     data = resp.json()
@@ -86,12 +86,11 @@ def list_accounts() -> str:
 @mcp.tool()
 def list_calendars(account_id: str = "") -> str:
     """List calendars across all accounts, optionally filtered by account_id."""
-    with httpx.Client() as client:
-        resp = client.get(f"{MORGEN_BASE_URL}/calendars/list", headers=_auth_headers())
-    if resp.status_code != 200:
-        return f"Error {resp.status_code}: {resp.text}"
-    data = resp.json()
-    calendars = data.get("data", {}).get("calendars", [])
+    try:
+        with httpx.Client() as client:
+            calendars = _fetch_all_calendars(client)
+    except httpx.HTTPStatusError as e:
+        return f"Error {e.response.status_code}: {e.response.text}"
     aid = account_id.strip()
     if aid:
         calendars = [c for c in calendars if c.get("accountId") == aid]
@@ -100,7 +99,9 @@ def list_calendars(account_id: str = "") -> str:
     header = f"Calendars for account {aid}:" if aid else "All calendars:"
     lines = [header]
     for cal in calendars:
-        lines.append(f"  {cal.get('id', '?')}  {cal.get('name', '')}  (account: {cal.get('accountId', '?')})")
+        lines.append(
+            f"  {cal.get('id', '?')}  {cal.get('name', '')}  (account: {cal.get('accountId', '?')})"
+        )
     return "\n".join(lines)
 
 
@@ -118,26 +119,30 @@ def get_events(date: str = "") -> str:
     start = datetime(target.year, target.month, target.day, tzinfo=timezone.utc)
     end = start + timedelta(days=1)
 
-    start_str = start.isoformat().replace("+00:00", "Z")
-    end_str = end.isoformat().replace("+00:00", "Z")
+    start_str = start.strftime("%Y-%m-%dT%H:%M:%SZ")
+    end_str = end.strftime("%Y-%m-%dT%H:%M:%SZ")
 
-    all_calendars = _fetch_all_calendars()
     all_events: list[dict] = []
-    for account_id in _account_ids():
-        cal_ids = ",".join(c["id"] for c in all_calendars if c.get("accountId") == account_id)
-        if not cal_ids:
-            continue
-        params: dict[str, str] = {
-            "accountId": account_id,
-            "calendarIds": cal_ids,
-            "start": start_str,
-            "end": end_str,
-        }
-        with httpx.Client() as client:
-            resp = client.get(f"{MORGEN_BASE_URL}/events/list", headers=_auth_headers(), params=params)
-        if resp.status_code != 200:
-            return f"Error {resp.status_code} for account {account_id}: {resp.text}"
-        all_events.extend(resp.json().get("data", {}).get("events", []))
+    with httpx.Client() as client:
+        all_calendars = _fetch_all_calendars(client)
+        for account_id in _account_ids():
+            cal_ids = ",".join(
+                c["id"] for c in all_calendars if c.get("accountId") == account_id
+            )
+            if not cal_ids:
+                continue
+            params: dict[str, str] = {
+                "accountId": account_id,
+                "calendarIds": cal_ids,
+                "start": start_str,
+                "end": end_str,
+            }
+            resp = client.get(
+                f"{MORGEN_BASE_URL}/events/list", headers=_auth_headers(), params=params
+            )
+            if resp.status_code != 200:
+                return f"Error {resp.status_code} for account {account_id}: {resp.text}"
+            all_events.extend(resp.json().get("data", {}).get("events", []))
 
     if not all_events:
         return f"No events found for {target}."
@@ -151,13 +156,15 @@ def get_events(date: str = "") -> str:
         ev_end = ev.get("end", "")
 
         try:
-            s = datetime.fromisoformat(ev_start.replace("Z", "+00:00"))
+            s = datetime.fromisoformat(ev_start)
             if len(ev_start.strip()) <= 10:
                 lines.append(f"  all-day  {title}")
             elif ev_end:
-                e_dt = datetime.fromisoformat(ev_end.replace("Z", "+00:00"))
+                e_dt = datetime.fromisoformat(ev_end)
                 duration_min = int((e_dt - s).total_seconds() // 60)
-                lines.append(f"  {s.strftime('%H:%M')}–{e_dt.strftime('%H:%M')} ({duration_min}m)  {title}")
+                lines.append(
+                    f"  {s.strftime('%H:%M')}–{e_dt.strftime('%H:%M')} ({duration_min}m)  {title}"
+                )
             else:
                 lines.append(f"  {s.strftime('%H:%M')}  {title}")
         except Exception:
