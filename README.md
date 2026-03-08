@@ -74,7 +74,9 @@ Add to your .env:
   MORGEN_ACCOUNT_ID=abc123def456,xyz789ghi012,...
 ```
 
-Copy that line into your `.env`. Include only the accounts whose events you want — see the [rate limits](#rate-limits) note below.
+It also prints a suggested CLAUDE.md snippet you can paste into your project instructions.
+
+Copy the env line into your `.env`. Include only the accounts whose events you want — see the [rate limits](#rate-limits) note below.
 
 ### 3. Register with your MCP client
 
