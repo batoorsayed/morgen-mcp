@@ -11,7 +11,16 @@ import os
 
 MORGEN_BASE_URL = "https://api.morgen.so/v3"
 
-mcp = FastMCP("morgen-mcp")
+mcp = FastMCP(
+    "morgen-mcp",
+    instructions=(
+        "This server connects to the Morgen calendar API. "
+        "Use get_events to fetch a user's calendar events for a given date (defaults to today). "
+        "Use list_accounts to discover connected account IDs — useful during setup. "
+        "Use list_calendars to explore calendars under a specific account. "
+        "Event data is returned as plain text suitable for summarisation or diary writing."
+    ),
+)
 
 
 def _api_key() -> str:
@@ -58,6 +67,18 @@ def list_accounts() -> str:
         )
     all_ids = ",".join(acc.get("id", "") for acc in accounts)
     lines.append(f"\nAdd to your .env:\n  MORGEN_ACCOUNT_ID={all_ids}")
+    lines.append(
+        "\nSuggested CLAUDE.md snippet (edit to fit your workflow):\n"
+        "---\n"
+        "When I ask for a diary entry:\n"
+        "1. Fetch my Morgen events for that day using get_events\n"
+        "2. Check if today's daily note exists — if not, create it\n"
+        "3. Read today's note and any recently flagged notes for context\n"
+        "4. Ask me 2-3 short questions to capture what the calendar doesn't show\n"
+        "5. Write a personal diary entry — human, not a bullet list\n"
+        "6. Append it under a '### End of Day' heading\n"
+        "---"
+    )
     return "\n".join(lines)
 
 

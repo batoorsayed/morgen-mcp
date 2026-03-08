@@ -8,9 +8,9 @@ An MCP server that connects your [Morgen](https://morgen.so) calendar to any MCP
 
 Calendar apps give you the technical skeleton of your day; what you did and when. Physical journals capture the feeling of it. This tool lives in between.
 
-`morgen-mcp` exposes your Morgen schedule as tools that your AI client can call. At the end of the day, ask it to write a diary entry: it fetches your actual events, you add how it felt, and it writes something that reads like a real diary and  not a meeting log.
+`morgen-mcp` exposes your Morgen schedule as tools that your AI client can call. At the end of the day, start a conversation: the AI fetches your events, reads your existing notes for context, asks you a couple of short questions, and writes something that reads like a real diary — not a meeting log.
 
-Pair it with an Obsidian MCP and the entry saves directly to your daily note. No extra subscriptions, no extra API keys. Works with whatever AI client you already use.
+Pair it with [mcp-obsidian](https://github.com/bitbonsai/mcp-obsidian) and the entry lands directly in your Obsidian daily note. No extra subscriptions, no extra API keys. Works with whatever AI client you already use.
 
 ---
 
@@ -115,11 +115,29 @@ Just talk to your AI client:
 "Summarize my week"
 ```
 
-### Suggested system prompt
+### The end-of-day ritual
 
-If your client supports project-level instructions, add something like:
+At the end of the day, open your AI client and say something like *"write today's diary entry"*. From there:
 
-> When I ask for a diary entry: fetch my Morgen events for that day, ask me how it felt, then write a personal diary entry that combines what I did with how I felt about it. Keep it human — not a bullet list, not a report. Append it to my Obsidian daily note under a "### End of Day" heading.
+1. The AI fetches your events for the day via `get_events`
+2. It checks whether today's Obsidian daily note (`YYYY-MM-DD.md`) exists — and creates it if not
+3. It reads your morning note and any recent notes you've flagged, to enrich the context
+4. It asks you 2–3 short questions — things the calendar can't tell it (what was hard, what surprised you, what's worth remembering)
+5. It writes a personal diary entry and appends it under a `### End of Day` heading
+
+This workflow requires both morgen-mcp (calendar) and [mcp-obsidian](https://github.com/bitbonsai/mcp-obsidian) (notes) connected to your client — morgen-mcp only handles the events fetch. The AI orchestrates the rest using both MCPs and the system prompt below. Credit to [bitbonsai](https://github.com/bitbonsai) for mcp-obsidian.
+
+**System prompt** — add this to your client's project instructions:
+
+```
+When I ask for a diary entry:
+1. Fetch my Morgen events for that day using get_events
+2. Check if today's Obsidian daily note (YYYY-MM-DD.md) exists — if not, create it
+3. Read today's note and any notes I've flagged as important from the past few days
+4. Ask me 2-3 short questions to capture what the calendar doesn't show
+5. Write a personal diary entry — human, not a bullet list — weaving the events and my answers together
+6. Append it to my daily note under a "### End of Day" heading
+```
 
 ---
 
