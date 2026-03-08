@@ -8,7 +8,7 @@ An MCP server that connects your [Morgen](https://morgen.so) calendar to any MCP
 
 Calendar apps give you the technical skeleton of your day; what you did and when. Physical journals capture the feeling of it. This tool lives in between.
 
-`morgen-mcp` exposes your Morgen schedule as tools that your AI client can call. At the end of the day, start a conversation: the AI fetches your events, reads your existing notes for context, asks you a couple of short questions, and writes something that reads like a real diary — not a meeting log.
+`morgen-mcp` exposes your Morgen schedule as tools that your AI client can call. At the end of the day, start a conversation: the AI fetches your events, reads your existing notes for context, asks you a couple of short questions, and writes something that reads like a real diary and not a meeting log.
 
 Pair it with [mcp-obsidian](https://github.com/bitbonsai/mcp-obsidian) and the entry lands directly in your Obsidian daily note. No extra subscriptions, no extra API keys. Works with whatever AI client you already use.
 
@@ -76,11 +76,11 @@ Add to your .env:
 
 It also prints a suggested CLAUDE.md snippet you can paste into your project instructions.
 
-Copy the env line into your `.env`. Include only the accounts whose events you want — see the [rate limits](#rate-limits) note below.
+Copy the env line into your `.env`. Include only the accounts whose events you want. See the [rate limits](#rate-limits) note below.
 
 ### 3. Register with your MCP client
 
-**Claude Code** — run this from inside the cloned directory:
+**Claude Code** :  Run this from inside the cloned directory:
 
 ```bash
 claude mcp add --scope user morgen-mcp -- uv --directory $(pwd) run morgen-mcp
@@ -88,7 +88,7 @@ claude mcp add --scope user morgen-mcp -- uv --directory $(pwd) run morgen-mcp
 
 Run once. Available across all projects. Credentials are picked up from `.env` automatically.
 
-**Other clients** (Claude Desktop, Cursor, Windsurf, etc.) — add to your client's MCP config file, replacing `/path/to/morgen-mcp` with the actual path to your clone. Most clients expand `$VAR` references from your shell environment — if yours doesn't, paste the actual values directly.
+**Other clients** (Claude Desktop, Cursor, Windsurf, etc.) : Add to your client's MCP config file, replacing `/path/to/morgen-mcp` with the actual path to your clone. Most clients expand `$VAR` references from your shell environment. If yours doesn't, paste the actual values directly.
 
 ```json
 {
@@ -122,14 +122,14 @@ Just talk to your AI client:
 At the end of the day, open your AI client and say something like *"write today's diary entry"*. From there:
 
 1. The AI fetches your events for the day via `get_events`
-2. It checks whether today's Obsidian daily note (`YYYY-MM-DD.md`) exists — and creates it if not
+2. It checks whether today's Obsidian daily note (`YYYY-MM-DD.md`) exists, and creates it if not
 3. It reads your morning note and any recent notes you've flagged, to enrich the context
-4. It asks you 2–3 short questions — things the calendar can't tell it (what was hard, what surprised you, what's worth remembering)
+4. It asks you 2–3 short questions: things the calendar can't tell it (what was hard, what surprised you, what's worth remembering)
 5. It writes a personal diary entry and appends it under a `### End of Day` heading
 
-This workflow requires both morgen-mcp (calendar) and [mcp-obsidian](https://github.com/bitbonsai/mcp-obsidian) (notes) connected to your client — morgen-mcp only handles the events fetch. The AI orchestrates the rest using both MCPs and the system prompt below. Credit to [bitbonsai](https://github.com/bitbonsai) for mcp-obsidian.
+This workflow requires both morgen-mcp (calendar) and [mcp-obsidian](https://github.com/bitbonsai/mcp-obsidian) (notes) connected to your client. morgen-mcp only handles the events fetch. The AI orchestrates the rest using both MCPs and the system prompt below. Credit to [bitbonsai](https://github.com/bitbonsai) for mcp-obsidian.
 
-**System prompt** — add this to your client's project instructions:
+**System prompt**: Add this to your client's project instructions:
 
 ```
 When I ask for a diary entry:
@@ -160,7 +160,7 @@ afternoon momentum. The kind of day where you do more than it felt like.
 
 The Morgen API allows 100 points per 15-minute window. Each `/list` call (calendars, events) costs 10 points.
 
-`get_events` makes one calendars fetch plus one events fetch per configured account. With 6 accounts that's 70 points — leaving 30 to spare. Fine for a diary tool used a few times a day, but avoid calling it in rapid succession.
+`get_events` makes one calendars fetch plus one events fetch per configured account. With 6 accounts that's 70 points, leaving 30 to spare. Fine for a diary tool used a few times a day, but avoid calling it in rapid succession.
 
 If you hit a 429, wait a few minutes and try again.
 
