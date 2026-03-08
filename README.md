@@ -49,32 +49,44 @@ uv sync
 
 Go to [platform.morgen.so](https://platform.morgen.so) > Developers > API Keys.
 
-### 2. Find your account and calendar IDs
-
-```bash
-# List your connected Morgen accounts
-uv run morgen-mcp --list-accounts
-
-# List calendars under an account
-uv run morgen-mcp --list-calendars <account_id>
-```
-
-### 3. Configure environment
+### 2. Configure environment
 
 ```bash
 cp .env.example .env
+# Add your API key to .env
 ```
 
-```env
-MORGEN_API_KEY=your_api_key
-MORGEN_ACCOUNT_ID=your_account_id
+Then run this to fetch your account IDs and get a ready-to-paste env line:
 
-# Optional: comma-separated calendar IDs to include.
-# Leave unset to include all calendars under the account.
-# MORGEN_CALENDAR_IDS=cal_id_1,cal_id_2
+```bash
+uv run morgen-mcp --list-accounts
 ```
 
-### 4. Add to your MCP client config
+It will print something like:
+
+```
+Accounts:
+  abc123def456  Your Name  [icloud]
+  xyz789ghi012  Your Name  [google]
+  ...
+
+Add to your .env:
+  MORGEN_ACCOUNT_ID=abc123def456,xyz789ghi012,...
+```
+
+Copy that line into your `.env`. Include only the accounts whose events you want — see the [rate limits](#rate-limits) note below.
+
+### 3. Register with your MCP client
+
+**Claude Code:**
+
+```bash
+claude mcp add --scope user morgen-mcp -- uv --directory /absolute/path/to/morgen-mcp run morgen-mcp
+```
+
+Run once. Available across all projects. Credentials are picked up from `.env` automatically.
+
+**Other clients** (Claude Desktop, Cursor, Windsurf, etc.) — add to your client's MCP config file:
 
 ```json
 {
@@ -83,16 +95,13 @@ MORGEN_ACCOUNT_ID=your_account_id
       "command": "uv",
       "args": ["--directory", "/absolute/path/to/morgen-mcp", "run", "morgen-mcp"],
       "env": {
-        "MORGEN_API_KEY": "your_key",
-        "MORGEN_ACCOUNT_ID": "your_account_id",
-        "MORGEN_CALENDAR_IDS": "cal_id_1,cal_id_2"
+        "MORGEN_API_KEY": "$MORGEN_API_KEY",
+        "MORGEN_ACCOUNT_ID": "$MORGEN_ACCOUNT_ID"
       }
     }
   }
 }
 ```
-
-Restart your client. The tools will be available.
 
 ---
 
@@ -124,6 +133,16 @@ that one took longer than it should have but shipping it felt like
 putting down something heavy. Three back-to-back meetings killed the
 afternoon momentum. The kind of day where you do more than it felt like.
 ```
+
+---
+
+## Rate limits
+
+The Morgen API allows 100 points per 15-minute window. Each `/list` call (calendars, events) costs 10 points.
+
+`get_events` makes one calendars fetch plus one events fetch per configured account. With 6 accounts that's 70 points — leaving 30 to spare. Fine for a diary tool used a few times a day, but avoid calling it in rapid succession.
+
+If you hit a 429, wait a few minutes and try again.
 
 ---
 

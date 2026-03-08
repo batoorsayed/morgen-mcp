@@ -1,5 +1,5 @@
 import sys
-from datetime import date, datetime, timedelta, timezone
+from datetime import datetime, timedelta, timezone
 
 import httpx
 from dotenv import load_dotenv
@@ -25,21 +25,19 @@ def _auth_headers() -> dict[str, str]:
     return {"Authorization": f"ApiKey {_api_key()}"}
 
 
-def _account_id() -> str:
-    aid = os.getenv("MORGEN_ACCOUNT_ID", "")
-    if not aid:
+def _account_ids() -> list[str]:
+    raw = os.getenv("MORGEN_ACCOUNT_ID", "").strip()
+    if not raw:
         raise RuntimeError("MORGEN_ACCOUNT_ID is not set")
-    return aid
+    return [aid.strip() for aid in raw.split(",") if aid.strip()]
 
 
-def _fetch_calendar_ids_for_account(account_id: str) -> str:
-    """Return comma-separated calendar IDs for the given account."""
+def _fetch_all_calendars() -> list[dict]:
+    """Return all calendars across all accounts."""
     with httpx.Client() as client:
         resp = client.get(f"{MORGEN_BASE_URL}/calendars/list", headers=_auth_headers())
     resp.raise_for_status()
-    calendars = resp.json().get("data", {}).get("calendars", [])
-    ids = [c["id"] for c in calendars if c.get("accountId") == account_id]
-    return ",".join(ids)
+    return resp.json().get("data", {}).get("calendars", [])
 
 
 @mcp.tool()
@@ -56,9 +54,10 @@ def list_accounts() -> str:
     lines = ["Accounts:"]
     for acc in accounts:
         lines.append(
-            f"  {acc.get('id', '?')}  {acc.get('providerUserId', '')}  "
-            f"{acc.get('providerUserDisplayName', '')}  [{acc.get('integrationId', '')}]"
+            f"  {acc.get('id', '?')}  {acc.get('providerUserDisplayName', '')}  [{acc.get('integrationId', '')}]"
         )
+    all_ids = ",".join(acc.get("id", "") for acc in accounts)
+    lines.append(f"\nAdd to your .env:\n  MORGEN_ACCOUNT_ID={all_ids}")
     return "\n".join(lines)
 
 
@@ -97,47 +96,50 @@ def get_events(date: str = "") -> str:
     start = datetime(target.year, target.month, target.day, tzinfo=timezone.utc)
     end = start + timedelta(days=1)
 
-    params: dict[str, str] = {
-        "accountId": _account_id(),
-        "start": start.isoformat().replace("+00:00", "Z"),
-        "end": end.isoformat().replace("+00:00", "Z"),
-    }
+    start_str = start.isoformat().replace("+00:00", "Z")
+    end_str = end.isoformat().replace("+00:00", "Z")
 
-    cal_ids = os.getenv("MORGEN_CALENDAR_IDS", "").strip()
-    if not cal_ids:
-        cal_ids = _fetch_calendar_ids_for_account(_account_id())
-    if not cal_ids:
-        return f"No calendars found for account {_account_id()}."
-    params["calendarIds"] = cal_ids
+    all_calendars = _fetch_all_calendars()
+    all_events: list[dict] = []
+    for account_id in _account_ids():
+        cal_ids = ",".join(c["id"] for c in all_calendars if c.get("accountId") == account_id)
+        if not cal_ids:
+            continue
+        params: dict[str, str] = {
+            "accountId": account_id,
+            "calendarIds": cal_ids,
+            "start": start_str,
+            "end": end_str,
+        }
+        with httpx.Client() as client:
+            resp = client.get(f"{MORGEN_BASE_URL}/events/list", headers=_auth_headers(), params=params)
+        if resp.status_code != 200:
+            return f"Error {resp.status_code} for account {account_id}: {resp.text}"
+        all_events.extend(resp.json().get("data", {}).get("events", []))
 
-    with httpx.Client() as client:
-        resp = client.get(f"{MORGEN_BASE_URL}/events/list", headers=_auth_headers(), params=params)
-
-    if resp.status_code != 200:
-        return f"Error {resp.status_code}: {resp.text}"
-
-    data = resp.json()
-    events = data.get("data", {}).get("events", [])
-    if not events:
+    if not all_events:
         return f"No events found for {target}."
 
-    events.sort(key=lambda e: e.get("start", ""))
+    all_events.sort(key=lambda e: e.get("start", ""))
 
     lines = [f"Events for {target}:"]
-    for ev in events:
+    for ev in all_events:
         title = ev.get("title", "(no title)")
         ev_start = ev.get("start", "")
         ev_end = ev.get("end", "")
 
         try:
             s = datetime.fromisoformat(ev_start.replace("Z", "+00:00"))
-            e_dt = datetime.fromisoformat(ev_end.replace("Z", "+00:00"))
-            duration_min = int((e_dt - s).total_seconds() // 60)
-            start_fmt = s.strftime("%H:%M")
-            end_fmt = e_dt.strftime("%H:%M")
-            lines.append(f"  {start_fmt}–{end_fmt} ({duration_min}m)  {title}")
+            if len(ev_start.strip()) <= 10:
+                lines.append(f"  all-day  {title}")
+            elif ev_end:
+                e_dt = datetime.fromisoformat(ev_end.replace("Z", "+00:00"))
+                duration_min = int((e_dt - s).total_seconds() // 60)
+                lines.append(f"  {s.strftime('%H:%M')}–{e_dt.strftime('%H:%M')} ({duration_min}m)  {title}")
+            else:
+                lines.append(f"  {s.strftime('%H:%M')}  {title}")
         except Exception:
-            lines.append(f"  {ev_start} – {ev_end}  {title}")
+            lines.append(f"  {title}")
 
     return "\n".join(lines)
 
