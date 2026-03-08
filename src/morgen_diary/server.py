@@ -80,7 +80,7 @@ def _parse_event_start(ev: dict) -> datetime:
     if tz_str and not ev.get("showWithoutTime", False):
         try:
             return s.replace(tzinfo=ZoneInfo(tz_str))
-        except ZoneInfoNotFoundError, KeyError:  # ruff: noqa
+        except (ZoneInfoNotFoundError, KeyError):  # fmt: skip
             pass
     return s.replace(tzinfo=timezone.utc)
 
